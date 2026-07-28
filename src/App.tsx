@@ -10,6 +10,7 @@ import Prospecting from "@/pages/Prospecting";
 import Campaigns from "@/pages/Campaigns";
 import Messages from "@/pages/Messages";
 import Settings from "@/pages/Settings";
+import PipelineResults from "@/pages/PipelineResults";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/prospecting" element={<Prospecting />} />
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/pipeline-results" element={<PipelineResults />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import Tabs from "@/components/Tabs";
@@ -36,6 +36,36 @@ const stageInstructions = [
   { title: "Response Handling", placeholder: "Match their tone, answer objections from FAQs, push toward booking..." },
 ];
 
+const DescriptionField = () => {
+  const [description, setDescription] = useState(() => {
+    try {
+      return localStorage.getItem("user_offering") || "";
+    } catch {
+      return "";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("user_offering", description);
+    } catch {
+      // ignore storage errors
+    }
+  }, [description]);
+
+  return (
+    <div>
+      <FormTextarea
+        label="Description"
+        placeholder="We help B2B companies automate their outbound sales with AI..."
+        value={description}
+        onChange={setDescription}
+      />
+      <AISuggestButton />
+    </div>
+  );
+};
+
 const CompanyTab = () => (
   <div className="space-y-6">
     <SectionCard className="space-y-4">
@@ -60,10 +90,7 @@ const CompanyTab = () => (
         <FormInput label="Location" placeholder="San Francisco, CA" />
       </div>
 
-      <div>
-        <FormTextarea label="Description" placeholder="We help B2B companies automate their outbound sales with AI..." />
-        <AISuggestButton />
-      </div>
+      <DescriptionField />
       <div>
         <FormTextarea label="Mission Statement" rows={2} placeholder="Scale outbound without scaling the team" />
         <AISuggestButton />

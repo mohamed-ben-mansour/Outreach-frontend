@@ -5,6 +5,7 @@ const navItems = [
   { icon: "📊", label: "Dashboard", path: "/" },
   { icon: "🎨", label: "Studio", path: "/studio" },
   { icon: "🎯", label: "Prospecting", path: "/prospecting" },
+  { icon: "🏆", label: "Pipeline Results", path: "/pipeline-results" },
   { icon: "🚀", label: "Campaigns", path: "/campaigns" },
   { icon: "✉️", label: "Messages", path: "/messages" },
   { icon: "⚙️", label: "Settings", path: "/settings" },

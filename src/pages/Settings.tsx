@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import Tabs from "@/components/Tabs";
@@ -178,7 +178,8 @@ const DNCTab = () => {
   return (
     <div className="space-y-6">
       <SectionCard className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">Exclude Specific People</h3>
+        <h3 className="text-lg font-semibold text-foreground">Persona Blacklist (LinkedIn URLs)</h3>
+        <p className="text-xs text-muted-foreground">These LinkedIn profile URLs are excluded from every campaign.</p>
         <div>
           <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Add by Email or LinkedIn URL</label>
           <div className="flex gap-2">
@@ -209,7 +210,8 @@ const DNCTab = () => {
       </SectionCard>
 
       <SectionCard className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">Exclude Companies</h3>
+        <h3 className="text-lg font-semibold text-foreground">Company Blacklist (names / domains / patterns)</h3>
+        <p className="text-xs text-muted-foreground">These company names, domains, or regex patterns are excluded from every campaign.</p>
         <div>
           <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Add by Company Name or Domain</label>
           <div className="flex gap-2">
@@ -374,9 +376,214 @@ const AccountTab = () => {
   );
 };
 
+const clampWeight = (value: number) => Math.max(0, Math.min(1, value));
+
+interface WeightEditorProps {
+  title: string;
+  subtitle: string;
+  storageKey: string;
+  defaultWeights: Record<string, number>;
+  weightItems: { key: string; label: string; desc: string }[];
+}
+
+const WeightEditor = ({ title, subtitle, storageKey, defaultWeights, weightItems }: WeightEditorProps) => {
+  const loadWeights = () => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (!stored) return defaultWeights;
+      const parsed = JSON.parse(stored);
+      const valid = { ...defaultWeights };
+      Object.keys(defaultWeights).forEach((key) => {
+        const value = Number(parsed[key]);
+        if (Number.isFinite(value) && value >= 0 && value <= 1) {
+          valid[key] = value;
+        }
+      });
+      return valid;
+    } catch {
+      return defaultWeights;
+    }
+  };
+
+  const [weights, setWeights] = useState<Record<string, number>>(loadWeights);
+  const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState<Record<string, string>>({});
+  const savedTimerRef = useRef<number | null>(null);
+
+  const total = Object.values(weights).reduce((a, b) => a + b, 0);
+  const isNormalized = Math.abs(total - 1) < 0.01;
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current);
+      }
+    };
+  }, []);
+
+  const commitWeight = (key: string, raw: string) => {
+    const num = clampWeight(Number(raw) || 0);
+    setWeights((prev) => ({ ...prev, [key]: num }));
+    setEditing((prev) => ({ ...prev, [key]: undefined }));
+    setSaved(false);
+  };
+
+  const normalize = () => {
+    if (total < 0.01) return;
+    setEditing({});
+    const next: Record<string, number> = {};
+    Object.keys(weights).forEach((key) => {
+      next[key] = weights[key] / total;
+    });
+    setWeights(next);
+    setSaved(false);
+  };
+
+  const resetToDefaults = () => {
+    setWeights(defaultWeights);
+    setEditing({});
+    setSaved(false);
+  };
+
+  const saveWeights = () => {
+    const nextWeights = { ...weights };
+    Object.keys(editing).forEach((key) => {
+      const raw = editing[key];
+      if (raw !== undefined) {
+        nextWeights[key] = clampWeight(Number(raw) || 0);
+      }
+    });
+    setWeights(nextWeights);
+    setEditing({});
+    localStorage.setItem(storageKey, JSON.stringify(nextWeights));
+    if (savedTimerRef.current) {
+      clearTimeout(savedTimerRef.current);
+    }
+    setSaved(true);
+    savedTimerRef.current = window.setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <SectionCard className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+
+      {weightItems.map((item) => (
+        <div key={item.key} className="bg-surface-2 border border-border rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-foreground">{item.label}</div>
+              <div className="text-xs text-muted-foreground">{item.desc}</div>
+            </div>
+            <input
+              type="number"
+              step={0.01}
+              min={0}
+              max={1}
+              value={editing[item.key] ?? weights[item.key].toFixed(2)}
+              onChange={(e) => setEditing((prev) => ({ ...prev, [item.key]: e.target.value }))}
+              onBlur={(e) => commitWeight(item.key, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  commitWeight(item.key, (e.target as HTMLInputElement).value);
+                }
+              }}
+              className="w-20 px-2 py-1 bg-background border border-border rounded text-foreground text-sm text-right focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={weights[item.key]}
+            onChange={(e) => commitWeight(item.key, e.target.value)}
+            className="w-full accent-primary"
+          />
+        </div>
+      ))}
+
+      <div className={`p-3 rounded-lg border ${isNormalized ? "bg-success/10 border-success/30 text-success" : "bg-warning/10 border-warning/30 text-warning"}`}>
+        <div className="flex items-center justify-between text-sm">
+          <span>
+            Total weight sum: <strong>{total.toFixed(2)}</strong>
+          </span>
+          <span>{isNormalized ? "✓ Normalized" : "⚠ Weights will be normalized on save"}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={resetToDefaults}
+          className="bg-surface-2 border border-border text-secondary-foreground text-sm px-4 py-2 rounded-lg hover:border-secondary-foreground/30 transition-colors"
+        >
+          Reset to Defaults
+        </button>
+        <button
+          onClick={normalize}
+          disabled={total < 0.01}
+          className="bg-surface-2 border border-border text-secondary-foreground text-sm px-4 py-2 rounded-lg hover:border-secondary-foreground/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Normalize Now
+        </button>
+        <button
+          onClick={saveWeights}
+          className="bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 text-sm transition-colors"
+        >
+          {saved ? "Saved!" : "Save Weights"}
+        </button>
+      </div>
+    </SectionCard>
+  );
+};
+
+const QualifierTab = () => {
+  return (
+    <div className="space-y-6">
+      <WeightEditor
+        title="Company Qualifier Weights"
+        subtitle="Adjust how much each firmographic feature contributes to the company qualification score. Weights are normalized internally, but keeping them near 1.0 makes tuning easier."
+        storageKey="outreach-qualifier-weights"
+        defaultWeights={{
+          industry_weight: 0.40,
+          size_weight: 0.30,
+          revenue_weight: 0.15,
+          tech_stack_weight: 0.15,
+        }}
+        weightItems={[
+          { key: "industry_weight", label: "Industry Weight", desc: "Importance of industry / vertical match" },
+          { key: "size_weight", label: "Company Size Weight", desc: "Importance of employee headcount match" },
+          { key: "revenue_weight", label: "Revenue Weight", desc: "Importance of annual revenue / ARR match" },
+          { key: "tech_stack_weight", label: "Tech Stack Weight", desc: "Importance of shared technology stack" },
+        ]}
+      />
+
+      <WeightEditor
+        title="Persona Axis Weights"
+        subtitle="How the total persona score is split between fit, reachability, and timing. These three weights should sum to 1.0."
+        storageKey="outreach-persona-axis-weights"
+        defaultWeights={{
+          fit_weight: 0.70,
+          reachability_weight: 0.20,
+          timing_weight: 0.10,
+        }}
+        weightItems={[
+          { key: "fit_weight", label: "Fit Weight", desc: "Share from role + authority fit (should be largest)" },
+          { key: "reachability_weight", label: "Reachability Weight", desc: "Share from LinkedIn reachability" },
+          { key: "timing_weight", label: "Timing Weight", desc: "Share from tenure + public signal relevance" },
+        ]}
+      />
+
+    </div>
+  );
+};
+
 const Settings = () => {
   const settingsTabs = [
     { id: "integrations", label: "Integrations" },
+    { id: "qualifier", label: "Qualifier" },
     { id: "dnc", label: "Do Not Contact" },
     { id: "account", label: "Account" },
   ];
@@ -388,6 +595,7 @@ const Settings = () => {
         {(tab) => (
           <>
             {tab === "integrations" && <IntegrationsTab />}
+            {tab === "qualifier" && <QualifierTab />}
             {tab === "dnc" && <DNCTab />}
             {tab === "account" && <AccountTab />}
           </>
