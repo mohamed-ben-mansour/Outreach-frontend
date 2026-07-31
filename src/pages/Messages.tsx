@@ -13,6 +13,8 @@ const touchProjection = [
 
 const SequencesTab = () => {
   const [seqMode, setSeqMode] = useState<"ai" | "manual">("ai");
+  const [aiWrite, setAiWrite] = useState<Record<number, boolean>>({ 2: true, 3: true });
+
 
   return (
     <div className="space-y-6">
@@ -98,9 +100,9 @@ const SequencesTab = () => {
             </div>
 
             {[
-              { num: 1, label: "First Touch", channel: "💼 LinkedIn DM", timing: "Immediate", aiWrite: false },
-              { num: 2, label: "Follow-up 1", channel: "📧 Email", timing: "3 days", aiWrite: true },
-              { num: 3, label: "Follow-up 2", channel: "💬 WhatsApp", timing: "5 days", aiWrite: true },
+              { num: 1, label: "First Touch", channel: "💼 LinkedIn DM", timing: "Immediate" },
+              { num: 2, label: "Follow-up 1", channel: "📧 Email", timing: "3 days" },
+              { num: 3, label: "Follow-up 2", channel: "💬 WhatsApp", timing: "5 days" },
             ].map((touch) => (
               <div key={touch.num} className="bg-surface-2 border border-border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -121,23 +123,35 @@ const SequencesTab = () => {
                     </select>
                   </div>
                 </div>
-                {touch.aiWrite ? (
-                  <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 text-sm text-primary">
-                    🤖 AI will generate based on your AI Instructions + context from previous touches
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs text-muted-foreground">Message Template</label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="rounded border-border bg-surface-2 text-primary"
+                        checked={!!aiWrite[touch.num]}
+                        onChange={(e) => setAiWrite((prev) => ({ ...prev, [touch.num]: e.target.checked }))}
+                      />
+                      Let AI write
+                    </label>
                   </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs text-muted-foreground">Message Template</label>
-                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                        <input type="checkbox" className="rounded border-border bg-surface-2 text-primary" />
-                        Let AI write
-                      </label>
-                    </div>
-                    <textarea rows={3} className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground font-mono" placeholder="Hey {firstName}, saw your post about {recentTopic}..." />
-                    <AISuggestButton label="AI Suggest Message" />
+                  <div className="relative">
+                    <textarea
+                      rows={3}
+                      disabled={!!aiWrite[touch.num]}
+                      className={`w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground font-mono transition-all ${aiWrite[touch.num] ? "blur-[2px] opacity-60 pointer-events-none select-none" : ""}`}
+                      placeholder="Hey {firstName}, saw your post about {recentTopic}..."
+                    />
+                    {aiWrite[touch.num] && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs text-primary bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
+                          🤖 AI will write this message
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             ))}
 
@@ -145,34 +159,9 @@ const SequencesTab = () => {
               + Add Touch
             </button>
           </SectionCard>
-
-          <SectionCard className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground mb-3">Sequence Options</h4>
-            {[
-              { label: "Vary tone across touches (start casual, end urgent)", defaultChecked: true },
-              { label: "Include \"breakup\" message as final touch", defaultChecked: false },
-              { label: "Reference previous messages in follow-ups", defaultChecked: false },
-              { label: "Escalate urgency each touch", defaultChecked: true },
-              { label: "Try cross-channel if no reply", defaultChecked: true },
-            ].map((opt) => (
-              <label key={opt.label} className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="rounded border-border bg-surface-2 text-primary" defaultChecked={opt.defaultChecked} />
-                <span className="text-sm text-secondary-foreground">{opt.label}</span>
-              </label>
-            ))}
-            <div className="pt-3 border-t border-border">
-              <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Stop After</label>
-              <select className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm">
-                <option>3 no-replies</option>
-                <option>5 no-replies</option>
-                <option>After sequence ends</option>
-                <option>First reply</option>
-                <option>Never (keep nurturing)</option>
-              </select>
-            </div>
-          </SectionCard>
         </div>
       )}
+
 
       <button className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-primary/90 transition-all">
         Save Sequence
