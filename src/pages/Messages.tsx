@@ -5,11 +5,12 @@ import Tabs from "@/components/Tabs";
 
 
 const touchProjection = [
-  { touch: 1, channel: "💼 LinkedIn DM", day: 0, rate: "22%" },
-  { touch: 2, channel: "📧 Email", day: 3, rate: "18%" },
-  { touch: 3, channel: "📧 Email", day: 7, rate: "12%" },
-  { touch: 4, channel: "💬 WhatsApp", day: 12, rate: "8%" },
+  { touch: 1, channel: "🤝 LinkedIn Connection Request", day: 0, rate: "22%" },
+  { touch: 2, channel: "💼 LinkedIn DM", day: 2, rate: "18%" },
+  { touch: 3, channel: "📨 LinkedIn InMail", day: 6, rate: "12%" },
+  { touch: 4, channel: "📧 Email", day: 10, rate: "8%" },
 ];
+
 
 const inmailCredits: number = 12;
 
