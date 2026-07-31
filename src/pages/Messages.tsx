@@ -11,7 +11,7 @@ const touchProjection = [
   { touch: 4, channel: "💬 WhatsApp", day: 12, rate: "8%" },
 ];
 
-const inmailCredits = 12;
+const inmailCredits: number = 12;
 
 const channelOptions = [
   { value: "li_connect", label: "🤝 LinkedIn Connection Request", noText: true },
