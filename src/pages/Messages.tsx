@@ -94,10 +94,13 @@ const SequencesTab = () => {
             <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Preferred First Channel</label>
             <select className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm">
               <option value="">AI decides based on data</option>
-              <option>LinkedIn DM</option>
-              <option>Email</option>
-              <option>WhatsApp</option>
+              {channelOptions.map((c) => (
+                <option key={c.value} value={c.value} disabled={c.requiresCredits && inmailCredits === 0}>
+                  {c.label}
+                </option>
+              ))}
             </select>
+
           </div>
 
           <div className="bg-surface-2 border border-border rounded-lg p-4 mt-4">
