@@ -128,15 +128,14 @@ const SequencesTab = () => {
               <h4 className="text-lg font-semibold text-foreground">Custom Sequence</h4>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-secondary-foreground">Touches:</label>
-                <span className="text-foreground font-mono text-sm bg-surface-2 px-2 py-1 rounded border border-border">3</span>
+                <span className="text-foreground font-mono text-sm bg-surface-2 px-2 py-1 rounded border border-border">{touches.length}</span>
               </div>
             </div>
 
-            {[
-              { num: 1, label: "First Touch", channel: "💼 LinkedIn DM", timing: "Immediate" },
-              { num: 2, label: "Follow-up 1", channel: "📧 Email", timing: "3 days" },
-              { num: 3, label: "Follow-up 2", channel: "💬 WhatsApp", timing: "5 days" },
-            ].map((touch) => (
+            {touches.map((touch) => {
+              const channel = channelOptions.find((c) => c.value === touch.channel);
+              const noText = !!channel?.noText;
+              return (
               <div key={touch.num} className="bg-surface-2 border border-border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs text-primary-foreground">{touch.num}</span>
@@ -145,17 +144,46 @@ const SequencesTab = () => {
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
                     <label className="block text-xs text-muted-foreground mb-1">Channel</label>
-                    <select className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm">
-                      <option>{touch.channel}</option>
+                    <select
+                      value={touch.channel}
+                      onChange={(e) => updateTouch(touch.num, { channel: e.target.value })}
+                      className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+                    >
+                      {channelOptions.map((c) => (
+                        <option key={c.value} value={c.value} disabled={c.requiresCredits && inmailCredits === 0}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Timing</label>
-                    <select className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm">
-                      <option>{touch.timing}</option>
-                    </select>
+                    <label className="block text-xs text-muted-foreground mb-1">Timing {touch.num === 1 ? "(after enrollment)" : "(after previous touch)"}</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={touch.delay}
+                        onChange={(e) => updateTouch(touch.num, { delay: Number(e.target.value) })}
+                        className="w-20 px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+                      />
+                      <select
+                        value={touch.unit}
+                        onChange={(e) => updateTouch(touch.num, { unit: e.target.value })}
+                        className="flex-1 px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+                      >
+                        {timingUnits.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {touch.delay === 0 && <p className="text-xs text-muted-foreground mt-1">Sends immediately</p>}
                   </div>
                 </div>
+                {noText ? (
+                  <div className="text-xs text-muted-foreground bg-background border border-border rounded-lg px-3 py-2">
+                    🤝 Connection request sent without a note — no message needed.
+                  </div>
+                ) : (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs text-muted-foreground">Message Template</label>
@@ -185,14 +213,16 @@ const SequencesTab = () => {
                     )}
                   </div>
                 </div>
+                )}
               </div>
-            ))}
+            );})}
 
-            <button className="w-full border-2 border-dashed border-border text-muted-foreground py-3 rounded-lg hover:border-secondary-foreground/30 hover:text-secondary-foreground transition-all">
+            <button onClick={addTouch} className="w-full border-2 border-dashed border-border text-muted-foreground py-3 rounded-lg hover:border-secondary-foreground/30 hover:text-secondary-foreground transition-all">
               + Add Touch
             </button>
           </SectionCard>
         </div>
+
       )}
 
 
