@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import Tabs from "@/components/Tabs";
