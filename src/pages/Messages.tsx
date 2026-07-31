@@ -4,14 +4,6 @@ import SectionCard from "@/components/SectionCard";
 import Tabs from "@/components/Tabs";
 
 
-const touchProjection = [
-  { touch: 1, channel: "🤝 LinkedIn Connection Request", day: 0, rate: "22%" },
-  { touch: 2, channel: "💼 LinkedIn DM", day: 2, rate: "18%" },
-  { touch: 3, channel: "📨 LinkedIn InMail", day: 6, rate: "12%" },
-  { touch: 4, channel: "📧 Email", day: 10, rate: "8%" },
-];
-
-
 const inmailCredits: number = 12;
 
 const channelOptions = [
@@ -22,55 +14,403 @@ const channelOptions = [
 ];
 
 const timingUnits = ["minutes", "hours", "days"];
+const tones = ["Casual", "Professional", "Direct", "Funny", "Warm"];
 
-type Touch = { num: number; label: string; channel: string; delay: number; unit: string };
+type Touch = {
+  id: number;
+  channel: string;
+  delay: number;
+  unit: string;
+  aiWrite: boolean;
+  template: string;
+  tone: string;
+  nativeLanguage: boolean;
+  language: string;
+  skipped: boolean;
+  approved: boolean;
+  feedback: string;
+};
 
-const initialTouches: Touch[] = [
-  { num: 1, label: "First Touch", channel: "li_connect", delay: 0, unit: "days" },
-  { num: 2, label: "Follow-up 1", channel: "li_dm", delay: 2, unit: "days" },
-  { num: 3, label: "Follow-up 2", channel: "email", delay: 5, unit: "days" },
+let nextId = 100;
+const makeTouch = (patch: Partial<Touch> = {}): Touch => ({
+  id: nextId++,
+  channel: "email",
+  delay: 3,
+  unit: "days",
+  aiWrite: true,
+  template: "",
+  tone: "Professional",
+  nativeLanguage: false,
+  language: "English",
+  skipped: false,
+  approved: false,
+  feedback: "",
+  ...patch,
+});
+
+const aiGeneratedPlan = (): Touch[] => [
+  makeTouch({ channel: "li_connect", delay: 0, unit: "days" }),
+  makeTouch({ channel: "li_dm", delay: 2, unit: "days" }),
+  makeTouch({ channel: "li_inmail", delay: 4, unit: "days" }),
+  makeTouch({ channel: "email", delay: 4, unit: "days" }),
 ];
+
+const manualStart = (): Touch[] => [
+  makeTouch({ channel: "li_connect", delay: 0, unit: "days" }),
+  makeTouch({ channel: "li_dm", delay: 2, unit: "days", aiWrite: false }),
+];
+
+const projectedRates = ["22%", "18%", "12%", "8%", "6%", "5%", "4%"];
+
+const StepCard = ({
+  touch,
+  index,
+  total,
+  onUpdate,
+  onRemove,
+  onMove,
+  onDragStart,
+  onDrop,
+}: {
+  touch: Touch;
+  index: number;
+  total: number;
+  onUpdate: (patch: Partial<Touch>) => void;
+  onRemove: () => void;
+  onMove: (dir: -1 | 1) => void;
+  onDragStart: () => void;
+  onDrop: () => void;
+}) => {
+  const channel = channelOptions.find((c) => c.value === touch.channel);
+  const noText = !!channel?.noText;
+
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+      className={`bg-surface-2 border rounded-lg p-4 transition-all ${
+        touch.skipped ? "opacity-50 border-dashed border-border" : touch.approved ? "border-success/50" : "border-border"
+      }`}
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <span className="cursor-grab text-muted-foreground text-sm select-none" title="Drag to reorder">⠿</span>
+        <span className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs text-primary-foreground">{index + 1}</span>
+        <span className="text-sm font-medium text-foreground">{index === 0 ? "First Touch" : `Follow-up ${index}`}</span>
+        {touch.approved && <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded-full">Approved</span>}
+        {touch.skipped && <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full">Skipped</span>}
+        <div className="ml-auto flex items-center gap-1">
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="text-xs px-2 py-1 rounded border border-border text-secondary-foreground disabled:opacity-30">↑</button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-xs px-2 py-1 rounded border border-border text-secondary-foreground disabled:opacity-30">↓</button>
+          <button onClick={() => onUpdate({ skipped: !touch.skipped })} className="text-xs px-2 py-1 rounded border border-border text-secondary-foreground">
+            {touch.skipped ? "Unskip" : "⏭️ Skip"}
+          </button>
+          <button onClick={onRemove} className="text-xs px-2 py-1 rounded border border-destructive/30 text-destructive">🗑️</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Channel</label>
+          <select
+            value={touch.channel}
+            onChange={(e) => onUpdate({ channel: e.target.value })}
+            className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+          >
+            {channelOptions.map((c) => (
+              <option key={c.value} value={c.value} disabled={c.requiresCredits && inmailCredits === 0}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Timing {index === 0 ? "(after enrollment)" : "(after previous step)"}</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              value={touch.delay}
+              onChange={(e) => onUpdate({ delay: Number(e.target.value) })}
+              className="w-20 px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+            />
+            <select
+              value={touch.unit}
+              onChange={(e) => onUpdate({ unit: e.target.value })}
+              className="flex-1 px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+            >
+              {timingUnits.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          </div>
+          {touch.delay === 0 && <p className="text-xs text-muted-foreground mt-1">Sends immediately</p>}
+        </div>
+      </div>
+
+      {noText ? (
+        <div className="text-xs text-muted-foreground bg-background border border-border rounded-lg px-3 py-2">
+          🤝 Connection request sent without a note — no message needed.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs text-muted-foreground">Message Template</label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="rounded border-border bg-surface-2 text-primary"
+                  checked={touch.aiWrite}
+                  onChange={(e) => onUpdate({ aiWrite: e.target.checked })}
+                />
+                Let AI write
+              </label>
+            </div>
+            <div className="relative">
+              <textarea
+                rows={3}
+                disabled={touch.aiWrite}
+                value={touch.template}
+                onChange={(e) => onUpdate({ template: e.target.value })}
+                className={`w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground font-mono transition-all ${touch.aiWrite ? "blur-[2px] opacity-60 pointer-events-none select-none" : ""}`}
+                placeholder="Hey {firstName}, saw your post about {recentTopic}..."
+              />
+              {touch.aiWrite && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs text-primary bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
+                    🤖 AI will write this message
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Voice / style</label>
+              <select
+                value={touch.tone}
+                onChange={(e) => onUpdate({ tone: e.target.value })}
+                className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+              >
+                {tones.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Language</label>
+              <select
+                value={touch.nativeLanguage ? "native" : touch.language}
+                onChange={(e) =>
+                  e.target.value === "native"
+                    ? onUpdate({ nativeLanguage: true })
+                    : onUpdate({ nativeLanguage: false, language: e.target.value })
+                }
+                className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
+              >
+                <option value="English">English</option>
+                <option value="native">🌍 Prospect's native language</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Spanish">Spanish</option>
+              </select>
+            </div>
+          </div>
+
+          {touch.aiWrite && (
+            <div className="flex gap-2">
+              <input
+                value={touch.feedback}
+                onChange={(e) => onUpdate({ feedback: e.target.value })}
+                placeholder='Feedback for AI, e.g. "make it shorter"'
+                className="flex-1 px-3 py-1.5 bg-background border border-border rounded text-foreground text-xs placeholder-muted-foreground"
+              />
+              <button className="text-xs bg-surface-3 border border-border text-secondary-foreground px-3 py-1.5 rounded">🔄 Regenerate step</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+        <button
+          onClick={() => onUpdate({ approved: !touch.approved })}
+          className={`text-xs px-3 py-1.5 rounded-lg ${touch.approved ? "bg-surface-3 border border-border text-secondary-foreground" : "bg-success text-success-foreground"}`}
+        >
+          {touch.approved ? "Undo approval" : "✓ Approve step"}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const SequencesTab = () => {
   const [seqMode, setSeqMode] = useState<"ai" | "manual">("ai");
-  const [aiWrite, setAiWrite] = useState<Record<number, boolean>>({ 2: true, 3: true });
-  const [touches, setTouches] = useState<Touch[]>(initialTouches);
+  const [touches, setTouches] = useState<Touch[]>([]);
+  const [planReady, setPlanReady] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [planFeedback, setPlanFeedback] = useState("");
+  const [maxTouches, setMaxTouches] = useState("");
+  const [maxDays, setMaxDays] = useState("");
+  const [firstChannel, setFirstChannel] = useState("");
+  const dragIndex = useRef<number | null>(null);
 
-  const updateTouch = (num: number, patch: Partial<Touch>) =>
-    setTouches((prev) => prev.map((t) => (t.num === num ? { ...t, ...patch } : t)));
+  const updateTouch = (id: number, patch: Partial<Touch>) =>
+    setTouches((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const addTouch = () =>
-    setTouches((prev) => [
-      ...prev,
-      { num: (prev[prev.length - 1]?.num ?? 0) + 1, label: `Follow-up ${prev.length}`, channel: "email", delay: 3, unit: "days" },
-    ]);
+  const removeTouch = (id: number) => setTouches((prev) => prev.filter((t) => t.id !== id));
 
+  const move = (index: number, dir: -1 | 1) =>
+    setTouches((prev) => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
 
+  const dropAt = (index: number) =>
+    setTouches((prev) => {
+      const from = dragIndex.current;
+      dragIndex.current = null;
+      if (from === null || from === index) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(index, 0, moved);
+      return next;
+    });
+
+  const generatePlan = () => {
+    const plan = aiGeneratedPlan();
+    const limit = Number(maxTouches);
+    const trimmed = limit > 0 ? plan.slice(0, limit) : plan;
+    if (firstChannel) trimmed[0] = { ...trimmed[0], channel: firstChannel };
+    setTouches(trimmed);
+    setPlanReady(true);
+    setStopped(false);
+  };
+
+  const startManual = () => {
+    setTouches(manualStart());
+    setPlanReady(true);
+    setStopped(false);
+  };
+
+  const restart = () => {
+    setPlanReady(false);
+    setTouches([]);
+    setStopped(false);
+  };
+
+  const active = touches.filter((t) => !t.skipped);
+  const totalDays = active.reduce((sum, t) => sum + (t.unit === "days" ? t.delay : 0), 0);
+  const allApproved = active.length > 0 && active.every((t) => t.approved);
+
+  const steps = (
+    <SectionCard className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-lg font-semibold text-foreground">
+          {seqMode === "ai" ? "AI Projected Sequence" : "Your Sequence"}
+        </h4>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Steps:</span>
+          <span className="text-foreground font-mono text-sm bg-surface-2 px-2 py-1 rounded border border-border">{touches.length}</span>
+          <button onClick={restart} className="text-xs border border-border text-secondary-foreground px-3 py-1.5 rounded-lg">
+            ↺ Restructure
+          </button>
+        </div>
+      </div>
+
+      {touches.map((t, i) => (
+        <StepCard
+          key={t.id}
+          touch={t}
+          index={i}
+          total={touches.length}
+          onUpdate={(patch) => updateTouch(t.id, patch)}
+          onRemove={() => removeTouch(t.id)}
+          onMove={(dir) => move(i, dir)}
+          onDragStart={() => (dragIndex.current = i)}
+          onDrop={() => dropAt(i)}
+        />
+      ))}
+
+      <button
+        onClick={() => setTouches((prev) => [...prev, makeTouch({ aiWrite: seqMode === "ai" })])}
+        className="w-full border-2 border-dashed border-border text-muted-foreground py-3 rounded-lg hover:border-secondary-foreground/30 hover:text-secondary-foreground transition-all"
+      >
+        + Add Step
+      </button>
+
+      <div className="bg-surface-2 border border-border rounded-lg p-4 flex justify-between text-sm">
+        <span className="text-muted-foreground">{active.length} active steps • ~{totalDays} days total</span>
+        <span className="text-success font-medium">
+          Projected reply rate: {active.reduce((sum, _t, i) => sum + parseInt(projectedRates[i] ?? "4%"), 0)}%
+        </span>
+      </div>
+    </SectionCard>
+  );
+
+  const planActions = (
+    <SectionCard className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setTouches((prev) => prev.map((t) => ({ ...t, approved: true })))}
+          className="bg-success text-success-foreground text-sm px-4 py-2 rounded-lg hover:bg-success/90"
+        >
+          ✓ Approve whole plan
+        </button>
+        <button
+          onClick={generatePlan}
+          className="bg-surface-2 border border-border text-secondary-foreground text-sm px-4 py-2 rounded-lg"
+        >
+          🔄 Regenerate plan with feedback
+        </button>
+        <button
+          onClick={() => setStopped(true)}
+          className="bg-surface-2 border border-destructive/30 text-destructive text-sm px-4 py-2 rounded-lg"
+        >
+          🛑 Stop sequence
+        </button>
+        {allApproved && <span className="text-xs text-success">All steps approved</span>}
+        {stopped && <span className="text-xs text-destructive">Sequence stopped — no further sends.</span>}
+      </div>
+      <textarea
+        rows={2}
+        value={planFeedback}
+        onChange={(e) => setPlanFeedback(e.target.value)}
+        placeholder='Feedback for regeneration, e.g. "fewer touches, more LinkedIn, less salesy"'
+        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground"
+      />
+    </SectionCard>
+  );
 
   return (
     <div className="space-y-6">
       <SectionCard>
         <div className="space-y-4">
           <label className="flex items-center gap-3 cursor-pointer p-4 border-2 border-border rounded-lg has-[:checked]:border-primary has-[:checked]:bg-primary/10">
-            <input type="radio" name="sequence_mode" checked={seqMode === "ai"} onChange={() => setSeqMode("ai")} className="text-primary" />
+            <input type="radio" name="sequence_mode" checked={seqMode === "ai"} onChange={() => { setSeqMode("ai"); restart(); }} className="text-primary" />
             <div>
               <div className="text-sm font-medium text-foreground">🤖 AI Generates Sequence</div>
               <div className="text-xs text-muted-foreground">AI decides # of touches, timing, channels, and message angles</div>
             </div>
           </label>
           <label className="flex items-center gap-3 cursor-pointer p-4 border-2 border-border rounded-lg has-[:checked]:border-primary has-[:checked]:bg-primary/10">
-            <input type="radio" name="sequence_mode" checked={seqMode === "manual"} onChange={() => setSeqMode("manual")} className="text-primary" />
+            <input type="radio" name="sequence_mode" checked={seqMode === "manual"} onChange={() => { setSeqMode("manual"); restart(); }} className="text-primary" />
             <div>
               <div className="text-sm font-medium text-foreground">✍️ Use My Custom Sequence</div>
-              <div className="text-xs text-muted-foreground">Define each touch yourself (templates or let AI write per touch)</div>
+              <div className="text-xs text-muted-foreground">Define each step yourself (write your own messages or let AI write per step)</div>
             </div>
           </label>
         </div>
       </SectionCard>
 
-      {seqMode === "ai" ? (
+      {seqMode === "ai" && !planReady && (
         <SectionCard className="space-y-4">
-          <h4 className="text-lg font-semibold text-foreground">AI Sequence Configuration</h4>
+          <h4 className="text-lg font-semibold text-foreground">AI Sequence Preferences</h4>
           <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
             <p className="text-sm text-primary mb-3">🤖 AI will automatically decide:</p>
             <ul className="text-xs text-primary/80 space-y-1 ml-4 list-disc">
@@ -84,16 +424,16 @@ const SequencesTab = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Override: Max Touches <span className="text-muted-foreground">(optional)</span></label>
-              <input type="number" min={1} max={7} className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground" placeholder="Leave blank for AI to decide" />
+              <input type="number" min={1} max={7} value={maxTouches} onChange={(e) => setMaxTouches(e.target.value)} className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground" placeholder="Leave blank for AI to decide" />
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Override: Max Days <span className="text-muted-foreground">(optional)</span></label>
-              <input type="number" min={1} max={30} className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground" placeholder="Leave blank for AI to decide" />
+              <input type="number" min={1} max={30} value={maxDays} onChange={(e) => setMaxDays(e.target.value)} className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground" placeholder="Leave blank for AI to decide" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Preferred First Channel</label>
-            <select className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm">
+            <select value={firstChannel} onChange={(e) => setFirstChannel(e.target.value)} className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm">
               <option value="">AI decides based on data</option>
               {channelOptions.map((c) => (
                 <option key={c.value} value={c.value} disabled={c.requiresCredits && inmailCredits === 0}>
@@ -101,135 +441,32 @@ const SequencesTab = () => {
                 </option>
               ))}
             </select>
-
           </div>
-
-          <div className="bg-surface-2 border border-border rounded-lg p-4 mt-4">
-            <div className="text-sm font-medium text-foreground mb-3">📊 AI Projected Sequence</div>
-            <div className="space-y-2">
-              {touchProjection.map((t) => (
-                <div key={t.touch} className="flex items-center gap-3 text-sm">
-                  <span className="text-muted-foreground">Touch {t.touch}:</span>
-                  <span className="text-foreground">{t.channel}</span>
-                  <span className="text-muted-foreground">→ Day {t.day}</span>
-                  <span className="text-success text-xs">{t.rate} reply rate</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 pt-3 border-t border-border flex justify-between text-sm">
-              <span className="text-muted-foreground">Total timeline: 12 days</span>
-              <span className="text-success font-medium">Projected reply rate: 48%</span>
-            </div>
-          </div>
+          <button onClick={generatePlan} className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-primary/90 transition-all">
+            Generate Sequence Plan
+          </button>
         </SectionCard>
-      ) : (
-        <div className="space-y-4">
-          <SectionCard className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-lg font-semibold text-foreground">Custom Sequence</h4>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-secondary-foreground">Touches:</label>
-                <span className="text-foreground font-mono text-sm bg-surface-2 px-2 py-1 rounded border border-border">{touches.length}</span>
-              </div>
-            </div>
-
-            {touches.map((touch) => {
-              const channel = channelOptions.find((c) => c.value === touch.channel);
-              const noText = !!channel?.noText;
-              return (
-              <div key={touch.num} className="bg-surface-2 border border-border rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs text-primary-foreground">{touch.num}</span>
-                  <span className="text-sm font-medium text-foreground">{touch.label}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Channel</label>
-                    <select
-                      value={touch.channel}
-                      onChange={(e) => updateTouch(touch.num, { channel: e.target.value })}
-                      className="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
-                    >
-                      {channelOptions.map((c) => (
-                        <option key={c.value} value={c.value} disabled={c.requiresCredits && inmailCredits === 0}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Timing {touch.num === 1 ? "(after enrollment)" : "(after previous touch)"}</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        value={touch.delay}
-                        onChange={(e) => updateTouch(touch.num, { delay: Number(e.target.value) })}
-                        className="w-20 px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
-                      />
-                      <select
-                        value={touch.unit}
-                        onChange={(e) => updateTouch(touch.num, { unit: e.target.value })}
-                        className="flex-1 px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm"
-                      >
-                        {timingUnits.map((u) => (
-                          <option key={u} value={u}>{u}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {touch.delay === 0 && <p className="text-xs text-muted-foreground mt-1">Sends immediately</p>}
-                  </div>
-                </div>
-                {noText ? (
-                  <div className="text-xs text-muted-foreground bg-background border border-border rounded-lg px-3 py-2">
-                    🤝 Connection request sent without a note — no message needed.
-                  </div>
-                ) : (
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs text-muted-foreground">Message Template</label>
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded border-border bg-surface-2 text-primary"
-                        checked={!!aiWrite[touch.num]}
-                        onChange={(e) => setAiWrite((prev) => ({ ...prev, [touch.num]: e.target.checked }))}
-                      />
-                      Let AI write
-                    </label>
-                  </div>
-                  <div className="relative">
-                    <textarea
-                      rows={3}
-                      disabled={!!aiWrite[touch.num]}
-                      className={`w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm placeholder-muted-foreground font-mono transition-all ${aiWrite[touch.num] ? "blur-[2px] opacity-60 pointer-events-none select-none" : ""}`}
-                      placeholder="Hey {firstName}, saw your post about {recentTopic}..."
-                    />
-                    {aiWrite[touch.num] && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs text-primary bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
-                          🤖 AI will write this message
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                )}
-              </div>
-            );})}
-
-            <button onClick={addTouch} className="w-full border-2 border-dashed border-border text-muted-foreground py-3 rounded-lg hover:border-secondary-foreground/30 hover:text-secondary-foreground transition-all">
-              + Add Touch
-            </button>
-          </SectionCard>
-        </div>
-
       )}
 
+      {seqMode === "manual" && !planReady && (
+        <SectionCard className="space-y-4">
+          <h4 className="text-lg font-semibold text-foreground">Build Your Own Sequence</h4>
+          <p className="text-sm text-muted-foreground">Start from a blank plan and add steps, channels, timing, and messages yourself. You can still let AI write any individual message.</p>
+          <button onClick={startManual} className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-primary/90 transition-all">
+            Start Building
+          </button>
+        </SectionCard>
+      )}
 
-      <button className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-primary/90 transition-all">
-        Save Sequence
-      </button>
+      {planReady && (
+        <>
+          {steps}
+          {planActions}
+          <button className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-primary/90 transition-all">
+            Save Sequence
+          </button>
+        </>
+      )}
     </div>
   );
 };
