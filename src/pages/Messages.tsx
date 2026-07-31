@@ -11,9 +11,39 @@ const touchProjection = [
   { touch: 4, channel: "💬 WhatsApp", day: 12, rate: "8%" },
 ];
 
+const inmailCredits = 12;
+
+const channelOptions = [
+  { value: "li_connect", label: "🤝 LinkedIn Connection Request", noText: true },
+  { value: "li_dm", label: "💼 LinkedIn DM" },
+  { value: "li_inmail", label: `📨 LinkedIn InMail (${inmailCredits} credits left)`, requiresCredits: true },
+  { value: "email", label: "📧 Email" },
+];
+
+const timingUnits = ["minutes", "hours", "days"];
+
+type Touch = { num: number; label: string; channel: string; delay: number; unit: string };
+
+const initialTouches: Touch[] = [
+  { num: 1, label: "First Touch", channel: "li_connect", delay: 0, unit: "days" },
+  { num: 2, label: "Follow-up 1", channel: "li_dm", delay: 2, unit: "days" },
+  { num: 3, label: "Follow-up 2", channel: "email", delay: 5, unit: "days" },
+];
+
 const SequencesTab = () => {
   const [seqMode, setSeqMode] = useState<"ai" | "manual">("ai");
   const [aiWrite, setAiWrite] = useState<Record<number, boolean>>({ 2: true, 3: true });
+  const [touches, setTouches] = useState<Touch[]>(initialTouches);
+
+  const updateTouch = (num: number, patch: Partial<Touch>) =>
+    setTouches((prev) => prev.map((t) => (t.num === num ? { ...t, ...patch } : t)));
+
+  const addTouch = () =>
+    setTouches((prev) => [
+      ...prev,
+      { num: (prev[prev.length - 1]?.num ?? 0) + 1, label: `Follow-up ${prev.length}`, channel: "email", delay: 3, unit: "days" },
+    ]);
+
 
 
   return (
