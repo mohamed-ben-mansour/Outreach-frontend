@@ -2,7 +2,7 @@ import { useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import Tabs from "@/components/Tabs";
-import AISuggestButton from "@/components/AISuggestButton";
+
 
 const touchProjection = [
   { touch: 1, channel: "💼 LinkedIn DM", day: 0, rate: "22%" },
