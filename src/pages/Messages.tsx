@@ -220,17 +220,23 @@ const StepCard = ({
             </div>
           </div>
 
-          {touch.aiWrite && (
-            <div className="flex gap-2">
-              <input
-                value={touch.feedback}
-                onChange={(e) => onUpdate({ feedback: e.target.value })}
-                placeholder='Feedback for AI, e.g. "make it shorter"'
-                className="flex-1 px-3 py-1.5 bg-background border border-border rounded text-foreground text-xs placeholder-muted-foreground"
-              />
-              <button className="text-xs bg-surface-3 border border-border text-secondary-foreground px-3 py-1.5 rounded">🔄 Regenerate step</button>
-            </div>
-          )}
+          <div className="bg-background border border-border rounded-lg p-3 space-y-2">
+            <label className="block text-xs text-muted-foreground">Feedback for the rewrite</label>
+            <textarea
+              rows={2}
+              value={touch.feedback}
+              onChange={(e) => onUpdate({ feedback: e.target.value })}
+              placeholder='e.g. "make it shorter, more casual, mention their new role"'
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded text-foreground text-xs placeholder-muted-foreground"
+            />
+            <button
+              disabled={!touch.feedback.trim()}
+              className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded disabled:opacity-40"
+            >
+              🔄 Regenerate with feedback
+            </button>
+          </div>
+
         </div>
       )}
 
