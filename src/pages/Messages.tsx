@@ -497,6 +497,89 @@ const approvalsData = [
   },
 ];
 
+const ApprovalCard = ({ a }: { a: (typeof approvalsData)[number] }) => {
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [sent, setSent] = useState(false);
+
+  return (
+    <SectionCard>
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 bg-surface-3 rounded-full flex items-center justify-center text-foreground font-bold">
+          {a.initials}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-medium text-foreground">{a.name}</span>
+            <span className="text-xs text-muted-foreground">{a.title}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${a.matchColor === "green" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+              {a.match} match
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+            <span>{a.channel}</span>
+            <span>•</span>
+            <span>{a.touch}</span>
+            <span>•</span>
+            <span>{a.campaign}</span>
+          </div>
+          <div className="bg-surface-2 border border-border rounded-lg p-3 mb-3">
+            {a.subject && <p className="text-sm text-muted-foreground mb-1">Subject: {a.subject}</p>}
+            <p className="text-sm text-secondary-foreground font-mono">{a.message}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="bg-success text-success-foreground text-xs px-3 py-1.5 rounded-lg hover:bg-success/90">✓ Approve</button>
+            <button className="bg-surface-2 border border-border text-secondary-foreground text-xs px-3 py-1.5 rounded-lg">✏️ Edit</button>
+            <button
+              onClick={() => {
+                setShowFeedback((v) => !v);
+                setSent(false);
+              }}
+              className={`text-xs px-3 py-1.5 rounded-lg border ${showFeedback ? "bg-surface-3 border-secondary-foreground/30 text-foreground" : "bg-surface-2 border-border text-secondary-foreground"}`}
+            >
+              🔄 Regenerate
+            </button>
+            <button className="bg-surface-2 border border-border text-secondary-foreground text-xs px-3 py-1.5 rounded-lg">⏭️ Skip</button>
+            <button className="bg-surface-2 border border-destructive/30 text-destructive text-xs px-3 py-1.5 rounded-lg">🚫 Block</button>
+          </div>
+
+          {showFeedback && (
+            <div className="mt-3 bg-surface-2 border border-border rounded-lg p-3 space-y-2">
+              <label className="block text-xs text-muted-foreground">Feedback for the rewrite</label>
+              <textarea
+                rows={2}
+                value={feedback}
+                onChange={(e) => {
+                  setFeedback(e.target.value);
+                  setSent(false);
+                }}
+                placeholder='e.g. "shorter, mention their recent funding round, drop the compliment"'
+                className="w-full px-3 py-2 bg-background border border-border rounded text-foreground text-xs placeholder-muted-foreground"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSent(true)}
+                  disabled={!feedback.trim()}
+                  className="bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
+                >
+                  ↩ Regenerate with feedback
+                </button>
+                <button
+                  onClick={() => setShowFeedback(false)}
+                  className="bg-surface-3 border border-border text-secondary-foreground text-xs px-3 py-1.5 rounded-lg"
+                >
+                  Cancel
+                </button>
+                {sent && <span className="text-xs text-success">Feedback sent — rewriting…</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </SectionCard>
+  );
+};
+
 const ApprovalsTab = () => (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
@@ -511,40 +594,7 @@ const ApprovalsTab = () => (
     </div>
 
     {approvalsData.map((a) => (
-      <SectionCard key={a.initials}>
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-surface-3 rounded-full flex items-center justify-center text-foreground font-bold">
-            {a.initials}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium text-foreground">{a.name}</span>
-              <span className="text-xs text-muted-foreground">{a.title}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${a.matchColor === "green" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                {a.match} match
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-              <span>{a.channel}</span>
-              <span>•</span>
-              <span>{a.touch}</span>
-              <span>•</span>
-              <span>{a.campaign}</span>
-            </div>
-            <div className="bg-surface-2 border border-border rounded-lg p-3 mb-3">
-              {a.subject && <p className="text-sm text-muted-foreground mb-1">Subject: {a.subject}</p>}
-              <p className="text-sm text-secondary-foreground font-mono">{a.message}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="bg-success text-success-foreground text-xs px-3 py-1.5 rounded-lg hover:bg-success/90">✓ Approve</button>
-              <button className="bg-surface-2 border border-border text-secondary-foreground text-xs px-3 py-1.5 rounded-lg">✏️ Edit</button>
-              <button className="bg-surface-2 border border-border text-secondary-foreground text-xs px-3 py-1.5 rounded-lg">🔄 Regenerate</button>
-              <button className="bg-surface-2 border border-border text-secondary-foreground text-xs px-3 py-1.5 rounded-lg">⏭️ Skip</button>
-              <button className="bg-surface-2 border border-destructive/30 text-destructive text-xs px-3 py-1.5 rounded-lg">🚫 Block</button>
-            </div>
-          </div>
-        </div>
-      </SectionCard>
+      <ApprovalCard key={a.initials} a={a} />
     ))}
 
     <div className="text-center py-4">
@@ -552,6 +602,7 @@ const ApprovalsTab = () => (
     </div>
   </div>
 );
+
 
 const conversations = [
   { initials: "SC", name: "Sarah Chen", time: "2m ago", preview: "Sounds interesting! Let's chat tomorrow...", unread: true },
