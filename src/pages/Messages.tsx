@@ -294,7 +294,8 @@ const SequencesTab = () => {
     const limit = Number(maxTouches);
     const trimmed = limit > 0 ? plan.slice(0, limit) : plan;
     if (firstChannel) trimmed[0] = { ...trimmed[0], channel: firstChannel };
-    setTouches(trimmed);
+    const withLanguage = trimmed.map((t) => ({ ...t, nativeLanguage: aiLanguage === "native" }));
+    setTouches(withLanguage);
     setPlanReady(true);
     setStopped(false);
   };
