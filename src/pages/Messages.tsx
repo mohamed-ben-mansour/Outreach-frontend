@@ -261,6 +261,7 @@ const SequencesTab = () => {
   const [maxTouches, setMaxTouches] = useState("");
   const [maxDays, setMaxDays] = useState("");
   const [firstChannel, setFirstChannel] = useState("");
+  const [aiLanguage, setAiLanguage] = useState<"default" | "native">("default");
   const dragIndex = useRef<number | null>(null);
 
   const updateTouch = (id: number, patch: Partial<Touch>) =>
@@ -293,7 +294,8 @@ const SequencesTab = () => {
     const limit = Number(maxTouches);
     const trimmed = limit > 0 ? plan.slice(0, limit) : plan;
     if (firstChannel) trimmed[0] = { ...trimmed[0], channel: firstChannel };
-    setTouches(trimmed);
+    const withLanguage = trimmed.map((t) => ({ ...t, nativeLanguage: aiLanguage === "native" }));
+    setTouches(withLanguage);
     setPlanReady(true);
     setStopped(false);
   };
@@ -446,6 +448,13 @@ const SequencesTab = () => {
                   {c.label}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-secondary-foreground mb-1.5">Language</label>
+            <select value={aiLanguage} onChange={(e) => setAiLanguage(e.target.value as "default" | "native")} className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-foreground text-sm">
+              <option value="default">Default (English)</option>
+              <option value="native">Lead native language</option>
             </select>
           </div>
           <button onClick={generatePlan} className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-xl hover:bg-primary/90 transition-all">
