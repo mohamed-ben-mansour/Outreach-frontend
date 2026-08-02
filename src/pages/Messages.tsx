@@ -261,6 +261,7 @@ const SequencesTab = () => {
   const [maxTouches, setMaxTouches] = useState("");
   const [maxDays, setMaxDays] = useState("");
   const [firstChannel, setFirstChannel] = useState("");
+  const [aiLanguage, setAiLanguage] = useState<"default" | "native">("default");
   const dragIndex = useRef<number | null>(null);
 
   const updateTouch = (id: number, patch: Partial<Touch>) =>
